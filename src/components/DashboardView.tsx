@@ -1,3 +1,4 @@
+import React from 'react';
 import { Product, Transaction, TabType, Employee, AttendanceRecord } from '../types';
 import { formatCurrency } from '../utils/format';
 
