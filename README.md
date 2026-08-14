@@ -2,16 +2,6 @@
 
 **Grizo-POS** adalah aplikasi Kasir (Point of Sale) & Manajemen Toko modern berbasis web yang mendukung sinkronisasi data *multi-device* secara *real-time*, manajemen inventaris barang & jasa, cetak struk thermal via Bluetooth ESC/POS, serta pelaporan kinerja toko terpusat.
 
----
-
-## 🌟 Deskripsi Singkat untuk Section "About" GitHub
-
-> **Short Description (untuk kolom Description di GitHub repository):**
-> 
-> *Modern Cloud-Connected POS & Store Management System built with React, Vite, Drizzle ORM, and Supabase Realtime.*
-
----
-
 ## ✨ Fitur Utama (Key Features)
 
 ### 💻 1. Multi-Device Real-Time Tracking (Supabase Realtime)
