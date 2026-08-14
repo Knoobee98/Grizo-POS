@@ -3,7 +3,12 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres.pqjqkblogffbznafjmvg:Grizolabs123!@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres';
+const connectionString = process.env.DATABASE_URL || '';
+
+if (!connectionString) {
+  console.error('❌ Error: DATABASE_URL environment variable is missing.');
+  process.exit(1);
+}
 
 const sql = postgres(connectionString, { ssl: 'require', prepare: false });
 
