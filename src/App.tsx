@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TabType, Product, Category, CartItem, Customer, Transaction, CashierStat, Employee, AttendanceRecord, StoreConfig, DEFAULT_STORE_CONFIG } from './types';
-import {
-  INITIAL_PRODUCTS,
-  INITIAL_CATEGORIES,
-  INITIAL_TRANSACTIONS,
-  INITIAL_CASHIERS,
-  INITIAL_EMPLOYEES,
-  INITIAL_ATTENDANCE
-} from './data/mockData';
+import { TabType, Product, Category, Transaction, Employee, StoreConfig } from './types';
 
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -26,7 +18,10 @@ import { ScannerModal } from './components/ScannerModal';
 import { LoginScreen } from './components/LoginScreen';
 import { NotificationsModal, NotificationItem } from './components/NotificationsModal';
 import { HelpModal } from './components/HelpModal';
-import { supabase, isSupabaseConfigured } from './utils/supabaseClient';
+
+import { usePOSStore } from './hooks/usePOSStore';
+import { useCart } from './hooks/useCart';
+import { useAttendance } from './hooks/useAttendance';
 
 export default function App() {
   // Authentication State
@@ -34,89 +29,46 @@ export default function App() {
     return localStorage.getItem('grizo_pos_session') !== null;
   });
 
-  // Saved Session Check for Initial Tab
-  const initialSessionUser = (() => {
-    const savedSession = localStorage.getItem('grizo_pos_session');
-    if (savedSession) {
-      try {
-        return JSON.parse(savedSession);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  })();
+  // Custom Hooks Store Initialization
+  const {
+    products,
+    setProducts,
+    categories,
+    setCategories,
+    transactions,
+    setTransactions,
+    cashierStats,
+    setCashierStats,
+    employees,
+    setEmployees,
+    storeConfig,
+    taxRate,
+    handleSaveConfig
+  } = usePOSStore();
 
-  // Navigation State (Admin & Store Manager default to 'dashboard', Cashier defaults to 'sales')
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
-    if (initialSessionUser && initialSessionUser.role !== 'Cashier') {
-      return 'dashboard';
-    }
-    return 'sales';
-  });
-  const [isOpenMobileMenu, setIsOpenMobileMenu] = useState(false);
+  const {
+    cart,
+    setCart,
+    selectedCustomer,
+    setSelectedCustomer,
+    discountAmount,
+    setDiscountAmount,
+    ticketNumberCount,
+    setTicketNumberCount,
+    handleAddToCart,
+    handleUpdateQuantity,
+    handleRemoveFromCart,
+    handleSaveOrder,
+    handleVoidOrder,
+    resetCart
+  } = useCart(4092);
 
-  // Core Data States (stored in localStorage)
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_products');
-    if (saved) {
-      const parsed: Product[] = JSON.parse(saved);
-      if (parsed.length > 0 && parsed[0].price < 1000) {
-        return INITIAL_PRODUCTS;
-      }
-      return parsed;
-    }
-    return INITIAL_PRODUCTS;
-  });
-
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_categories');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return INITIAL_CATEGORIES;
-  });
-
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_transactions');
-    if (saved) {
-      const parsed: Transaction[] = JSON.parse(saved);
-      if (parsed.length > 0 && parsed[0].total < 1000) {
-        return INITIAL_TRANSACTIONS;
-      }
-      return parsed;
-    }
-    return INITIAL_TRANSACTIONS;
-  });
-
-  const [cashierStats, setCashierStats] = useState<CashierStat[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_cashier_stats');
-    if (saved) {
-      const parsed: CashierStat[] = JSON.parse(saved);
-      if (parsed.length > 0 && parsed[0].totalSales < 1000) {
-        return INITIAL_CASHIERS;
-      }
-      return parsed;
-    }
-    return INITIAL_CASHIERS;
-  });
-
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_employees');
-    if (saved) {
-      const parsed: Employee[] = JSON.parse(saved);
-      if (parsed.length > 0 && parsed[0].totalSalesToday > 0 && parsed[0].totalSalesToday < 1000) {
-        return INITIAL_EMPLOYEES;
-      }
-      return parsed;
-    }
-    return INITIAL_EMPLOYEES;
-  });
-
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>(() => {
-    const saved = localStorage.getItem('grizo_pos_attendance_logs');
-    return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE;
-  });
+  const {
+    attendanceLogs,
+    handleCheckIn: performCheckIn,
+    handleCheckOut: performCheckOut,
+    handleToggleBreak: performToggleBreak
+  } = useAttendance(employees);
 
   // Active Cashier
   const [currentCashier, setCurrentCashier] = useState<Employee>(() => {
@@ -133,59 +85,27 @@ export default function App() {
     return employees[0];
   });
 
-  const handleLoginSuccess = (loggedInCashier: Employee) => {
-    setCurrentCashier(loggedInCashier);
-    setIsAuthenticated(true);
-    localStorage.setItem('grizo_pos_session', JSON.stringify(loggedInCashier));
-    if (loggedInCashier.role !== 'Cashier') {
-      setActiveTab('dashboard');
-    } else {
-      setActiveTab('sales');
+  // Saved Session Check for Initial Tab Navigation
+  const initialSessionUser = (() => {
+    const savedSession = localStorage.getItem('grizo_pos_session');
+    if (savedSession) {
+      try {
+        return JSON.parse(savedSession);
+      } catch (e) {
+        return null;
+      }
     }
-  };
+    return null;
+  })();
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('grizo_pos_session');
-    // Sanitize state to prevent modal or cart leakage across roles
-    setCart([]);
-    setDiscountAmount(0);
-    setSelectedCustomer(null);
-    setIsPaymentModalOpen(false);
-    setActiveReceipt(null);
-    setSelectedDetailTransaction(null);
-    setIsScannerOpen(false);
-    setIsNotificationsOpen(false);
-    setIsHelpOpen(false);
-  };
-
-  // Active Cart State
-  const [cart, setCart] = useState<CartItem[]>(() => [
-    {
-      product: INITIAL_PRODUCTS[0], // Basic Cotton Tee - White
-      quantity: 2
-    },
-    {
-      product: INITIAL_PRODUCTS[1], // Classic Slim Denim Jeans
-      quantity: 1
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (initialSessionUser && initialSessionUser.role !== 'Cashier') {
+      return 'dashboard';
     }
-  ]);
-
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => {
-    const saved = localStorage.getItem('grizo_pos_store_config');
-    return saved ? JSON.parse(saved) : DEFAULT_STORE_CONFIG;
+    return 'sales';
   });
 
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [discountAmount, setDiscountAmount] = useState<number>(50000);
-  const [taxRate, setTaxRate] = useState<number>(() => storeConfig.taxRate || 0.085);
-  const [ticketNumberCount, setTicketNumberCount] = useState<number>(4092);
-
-  const handleSaveConfig = (newConfig: StoreConfig) => {
-    setStoreConfig(newConfig);
-    setTaxRate(newConfig.taxRate);
-    localStorage.setItem('grizo_pos_store_config', JSON.stringify(newConfig));
-  };
+  const [isOpenMobileMenu, setIsOpenMobileMenu] = useState(false);
 
   // Modal & Popup States
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -239,6 +159,29 @@ export default function App() {
     }
   ]);
 
+  const handleLoginSuccess = (loggedInCashier: Employee) => {
+    setCurrentCashier(loggedInCashier);
+    setIsAuthenticated(true);
+    localStorage.setItem('grizo_pos_session', JSON.stringify(loggedInCashier));
+    if (loggedInCashier.role !== 'Cashier') {
+      setActiveTab('dashboard');
+    } else {
+      setActiveTab('sales');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('grizo_pos_session');
+    resetCart();
+    setIsPaymentModalOpen(false);
+    setActiveReceipt(null);
+    setSelectedDetailTransaction(null);
+    setIsScannerOpen(false);
+    setIsNotificationsOpen(false);
+    setIsHelpOpen(false);
+  };
+
   const handleMarkAllNotificationsAsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
@@ -256,7 +199,6 @@ export default function App() {
   // Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore when typing inside input or textarea
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
         if (e.key === 'Escape') {
           setIsPaymentModalOpen(false);
@@ -292,133 +234,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart.length]);
 
-  // Save changes to local storage with QuotaExceededError protection
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_products', JSON.stringify(products));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving products:', err);
-    }
-  }, [products]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_categories', JSON.stringify(categories));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving categories:', err);
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_transactions', JSON.stringify(transactions));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving transactions:', err);
-    }
-  }, [transactions]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_cashier_stats', JSON.stringify(cashierStats));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving cashier stats:', err);
-    }
-  }, [cashierStats]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_employees', JSON.stringify(employees));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving employees:', err);
-    }
-  }, [employees]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('grizo_pos_attendance_logs', JSON.stringify(attendanceLogs));
-    } catch (err) {
-      console.warn('Storage quota exceeded when saving attendance logs:', err);
-    }
-  }, [attendanceLogs]);
-
-  // Supabase Real-Time Listener & Initial Fetch
-  useEffect(() => {
-    if (!isSupabaseConfigured() || !supabase) return;
-
-    // 1. Initial Fetch for Attendance Logs from Supabase
-    const fetchSupabaseAttendance = async () => {
-      const { data, error } = await supabase
-        .from('attendance_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) {
-        const formatted: AttendanceRecord[] = data.map((d: any) => ({
-          id: d.id,
-          employeeId: d.employee_id,
-          employeeName: d.employee_name,
-          date: d.date,
-          checkInTime: d.check_in_time,
-          checkOutTime: d.check_out_time,
-          status: d.status,
-          notes: d.notes
-        }));
-        setAttendanceLogs(formatted);
-      }
-    };
-
-    fetchSupabaseAttendance();
-
-    // 2. Real-Time Subscription for Multi-Device Sync
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'attendance_logs' },
-        (payload) => {
-          const newRow: any = payload.new;
-          const newRecord: AttendanceRecord = {
-            id: newRow.id,
-            employeeId: newRow.employee_id,
-            employeeName: newRow.employee_name,
-            date: newRow.date,
-            checkInTime: newRow.check_in_time,
-            checkOutTime: newRow.check_out_time,
-            status: newRow.status,
-            notes: newRow.notes
-          };
-
-          setAttendanceLogs((prev) => {
-            if (prev.some((r) => r.id === newRecord.id)) return prev;
-            return [newRecord, ...prev];
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'attendance_logs' },
-        (payload) => {
-          const updatedRow: any = payload.new;
-          setAttendanceLogs((prev) =>
-            prev.map((r) =>
-              r.id === updatedRow.id
-                ? {
-                    ...r,
-                    checkOutTime: updatedRow.check_out_time || r.checkOutTime,
-                    status: updatedRow.status
-                  }
-                : r
-            )
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   // Ensure non-cashier roles (Admin & Store Manager) are redirected to dashboard if on sales tab
   useEffect(() => {
     if (currentCashier && currentCashier.role !== 'Cashier' && activeTab === 'sales') {
@@ -426,182 +241,41 @@ export default function App() {
     }
   }, [currentCashier, activeTab]);
 
-  // Attendance Handlers with Supabase Cloud Broadcast
+  // Attendance Handlers wrapping hook + employee status updates
   const handleCheckIn = async (employeeId: string, notes?: string) => {
-    const emp = employees.find((e) => e.id === employeeId);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-    const newRecord: AttendanceRecord = {
-      id: `att-${Date.now()}`,
-      employeeId,
-      employeeName: emp ? emp.name : 'Unknown Staff',
-      date: todayStr,
-      checkInTime: timeStr,
-      status: 'Checked In',
-      notes: notes || 'Masuk Shift Regular'
-    };
-
-    setAttendanceLogs((prev) => [newRecord, ...prev]);
-
-    // Broadcast & Sync to Supabase Cloud if configured
-    if (isSupabaseConfigured() && supabase) {
-      await supabase.from('attendance_logs').insert([
-        {
-          id: newRecord.id,
-          employee_id: newRecord.employeeId,
-          employee_name: newRecord.employeeName,
-          date: newRecord.date,
-          check_in_time: newRecord.checkInTime,
-          status: newRecord.status,
-          notes: newRecord.notes
-        }
-      ]);
-    }
-
-    // Update employee status
+    await performCheckIn(employeeId, notes);
     setEmployees((prev) =>
       prev.map((e) => (e.id === employeeId ? { ...e, status: 'Active' } : e))
     );
   };
 
   const handleCheckOut = async (employeeId: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-    // Find active non-checked out record for employee
-    const activeRecord = attendanceLogs.find(
-      (log) => log.employeeId === employeeId && log.date === todayStr && log.status !== 'Checked Out'
-    );
-
-    if (!activeRecord) return;
-
-    setAttendanceLogs((prev) =>
-      prev.map((log) => {
-        if (log.id === activeRecord.id) {
-          return {
-            ...log,
-            checkOutTime: timeStr,
-            status: 'Checked Out'
-          };
-        }
-        return log;
-      })
-    );
-
-    if (isSupabaseConfigured() && supabase) {
-      await supabase
-        .from('attendance_logs')
-        .update({
-          check_out_time: timeStr,
-          status: 'Checked Out'
-        })
-        .eq('id', activeRecord.id);
-    }
-
+    await performCheckOut(employeeId);
     setEmployees((prev) =>
       prev.map((e) => (e.id === employeeId ? { ...e, status: 'Offline' } : e))
     );
   };
 
   const handleToggleBreak = async (employeeId: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // Find current active (non-Checked Out) record for employee
-    const currentRecord = attendanceLogs.find(
-      (log) => log.employeeId === employeeId && log.date === todayStr && log.status !== 'Checked Out'
-    );
-
-    if (!currentRecord) return; // If no active session, do nothing
-
-    const isCurrentlyOnBreak = currentRecord.status === 'On Break';
-    const nextStatus = isCurrentlyOnBreak ? 'Checked In' : 'On Break';
-
-    setAttendanceLogs((prev) =>
-      prev.map((log) => {
-        // Only update the exact active session record!
-        if (log.id === currentRecord.id) {
-          return { ...log, status: nextStatus };
-        }
-        return log;
-      })
-    );
-
-    if (isSupabaseConfigured() && supabase) {
-      await supabase
-        .from('attendance_logs')
-        .update({
-          status: nextStatus
-        })
-        .eq('id', currentRecord.id);
-    }
-
+    await performToggleBreak(employeeId);
     setEmployees((prev) =>
       prev.map((e) => {
         if (e.id === employeeId) {
-          return { ...e, status: nextStatus === 'On Break' ? 'On Break' : 'Active' };
+          return { ...e, status: e.status === 'On Break' ? 'Active' : 'On Break' };
         }
         return e;
       })
     );
   };
 
-  // Cart Operations
-  const handleAddToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { product, quantity: 1 }];
-    });
-  };
-
-  const handleUpdateQuantity = (productId: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.product.id === productId) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[]
-    );
-  };
-
-  const handleRemoveFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
-
-  const handleSaveOrder = () => {
-    if (cart.length === 0) return;
-    alert(`Order #${ticketNumberCount} saved safely. You can retrieve saved orders anytime.`);
-  };
-
-  const handleVoidOrder = () => {
-    if (cart.length === 0) return;
-    if (confirm('Are you sure you want to void this current order?')) {
-      setCart([]);
-      setDiscountAmount(0);
-      setSelectedCustomer(null);
-    }
-  };
-
-  // Checkout Payment Complete
+  // Checkout Payment Complete Handler
   const handleCompleteTransaction = (newTx: Transaction) => {
-    // Attach cashierId key for data isolation
     const isolatedTx: Transaction = {
       ...newTx,
-      cashierId: currentCashier.cashierKey
+      cashierId: currentCashier.cashierKey || currentCashier.id
     };
 
-    // 1. Add transaction
+    // 1. Add to transaction list
     setTransactions((prev) => [isolatedTx, ...prev]);
 
     // 2. Reduce product stock
@@ -659,7 +333,6 @@ export default function App() {
     setTransactions((prev) =>
       prev.map((tx) => {
         if (tx.id === txId) {
-          // Restore product stock
           tx.items.forEach((item) => {
             setProducts((pList) =>
               pList.map((p) =>
@@ -675,23 +348,33 @@ export default function App() {
   };
 
   // Inventory Handlers
-  const handleAddProduct = (newProd: Product) => {
-    setProducts((prev) => [newProd, ...prev]);
+  const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
+    const created: Product = {
+      ...newProduct,
+      id: `prod-${Date.now()}`
+    };
+    setProducts((prev) => [created, ...prev]);
   };
 
-  const handleUpdateStock = (productId: string, newStock: number) => {
+  const handleUpdateProduct = (updatedProduct: Product) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
+      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     );
   };
 
   const handleDeleteProduct = (productId: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    if (confirm('Are you sure you want to delete this product?')) {
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+    }
   };
 
   // Category Handlers
-  const handleAddCategory = (newCat: Category) => {
-    setCategories((prev) => [...prev, newCat]);
+  const handleAddCategory = (newCat: Omit<Category, 'id'>) => {
+    const created: Category = {
+      ...newCat,
+      id: `cat-${Date.now()}`
+    };
+    setCategories((prev) => [...prev, created]);
   };
 
   const handleUpdateCategory = (updatedCat: Category) => {
@@ -701,41 +384,50 @@ export default function App() {
   };
 
   const handleDeleteCategory = (catId: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== catId));
+    const cat = categories.find((c) => c.id === catId);
+    if (!cat) return;
+
+    const inUseCount = products.filter((p) => p.category === cat.name).length;
+    if (inUseCount > 0) {
+      alert(`Cannot delete category "${cat.name}" because it is currently assigned to ${inUseCount} product(s). Please reassign those products first.`);
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+    }
   };
 
-  // Reset demo data
-  const handleResetDemoData = () => {
-    localStorage.removeItem('grizo_pos_products');
-    localStorage.removeItem('grizo_pos_categories');
-    localStorage.removeItem('grizo_pos_transactions');
-    localStorage.removeItem('grizo_pos_cashier_stats');
-    localStorage.removeItem('grizo_pos_employees');
-    localStorage.removeItem('grizo_pos_attendance_logs');
-    localStorage.removeItem('grizo_pos_store_config');
-    setProducts(INITIAL_PRODUCTS);
-    setCategories(INITIAL_CATEGORIES);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setCashierStats(INITIAL_CASHIERS);
-    setEmployees(INITIAL_EMPLOYEES);
-    setAttendanceLogs(INITIAL_ATTENDANCE);
-    setStoreConfig(DEFAULT_STORE_CONFIG);
-    setTaxRate(DEFAULT_STORE_CONFIG.taxRate);
-    setCurrentCashier(INITIAL_EMPLOYEES[0]);
+  // Employee Handlers
+  const handleAddEmployee = (newEmp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday' | 'status'>) => {
+    const created: Employee = {
+      ...newEmp,
+      id: `emp-${Date.now()}`,
+      status: 'Offline',
+      totalSalesToday: 0,
+      txnsToday: 0
+    };
+    setEmployees((prev) => [...prev, created]);
   };
 
-  // Calculations for active order
-  const subtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const calculatedTax = Math.round((subtotal - discountAmount) * taxRate * 100) / 100;
-  const finalTax = Math.max(0, calculatedTax);
-  const grandTotal = Math.max(0, subtotal - discountAmount + finalTax);
+  const handleUpdateEmployee = (updatedEmp: Employee) => {
+    setEmployees((prev) =>
+      prev.map((e) => (e.id === updatedEmp.id ? updatedEmp : e))
+    );
+  };
+
+  const handleDeleteEmployee = (empId: string) => {
+    if (confirm('Are you sure you want to delete this employee?')) {
+      setEmployees((prev) => prev.filter((e) => e.id !== empId));
+    }
+  };
 
   return (
     <>
       {!isAuthenticated ? (
-        <LoginScreen employees={employees} onLoginSuccess={handleLoginSuccess} />
+        <LoginScreen onLoginSuccess={handleLoginSuccess} employees={employees} />
       ) : (
-        <div className="bg-[#f9f9fc] text-[#1a1c1e] h-screen w-screen overflow-hidden flex font-body-md select-none">
+        <div className="flex h-screen w-screen overflow-hidden bg-[#f9f9fc] font-sans antialiased text-[#1a1c1e]">
           {/* Sidebar Navigation */}
           <Sidebar
             activeTab={activeTab}
@@ -751,7 +443,6 @@ export default function App() {
 
           {/* Main Content Area */}
           <main className="flex-1 flex flex-col min-w-0 bg-[#f9f9fc] relative h-screen overflow-hidden">
-            {/* Top Header Navigation */}
             <TopBar
               currentCashier={currentCashier}
               onOpenMobileMenu={() => setIsOpenMobileMenu(true)}
@@ -761,22 +452,100 @@ export default function App() {
               unreadNotificationsCount={notifications.filter((n) => !n.isRead).length}
             />
 
-        {/* View Switcher Container */}
-        <div className="flex-1 overflow-hidden relative flex flex-col">
-          {activeTab === 'dashboard' && (
-            <DashboardView
-              products={products}
-              transactions={transactions}
-              attendanceLogs={attendanceLogs}
-              currencySymbol={storeConfig.currencySymbol}
-              onNavigate={setActiveTab}
-              currentCashier={currentCashier}
-            />
-          )}
+            {/* View Switcher Container */}
+            <div className="flex-1 overflow-hidden relative flex flex-col">
+              {activeTab === 'dashboard' && (
+                <DashboardView
+                  products={products}
+                  transactions={transactions}
+                  attendanceLogs={attendanceLogs}
+                  currencySymbol={storeConfig.currencySymbol}
+                  onNavigate={setActiveTab}
+                  currentCashier={currentCashier}
+                />
+              )}
 
-          {activeTab === 'sales' && currentCashier?.role === 'Cashier' && (
-            <SalesView
-              products={products}
+              {activeTab === 'sales' && currentCashier?.role === 'Cashier' && (
+                <SalesView
+                  products={products}
+                  cart={cart}
+                  ticketNo={`#${ticketNumberCount}`}
+                  selectedCustomer={selectedCustomer}
+                  discountAmount={discountAmount}
+                  taxRate={taxRate}
+                  currentCashier={currentCashier}
+                  currencySymbol={storeConfig.currencySymbol}
+                  onAddToCart={handleAddToCart}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onRemoveFromCart={handleRemoveFromCart}
+                  onSelectCustomer={setSelectedCustomer}
+                  onApplyDiscount={setDiscountAmount}
+                  onCheckout={() => setIsPaymentModalOpen(true)}
+                  onSaveOrder={handleSaveOrder}
+                  onVoidOrder={handleVoidOrder}
+                  onOpenScanner={() => setIsScannerOpen(true)}
+                />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportsView
+                  transactions={transactions}
+                  cashierStats={cashierStats}
+                  employees={employees}
+                  currentCashier={currentCashier}
+                  currencySymbol={storeConfig.currencySymbol}
+                  onSelectTransaction={(tx) => setSelectedDetailTransaction(tx)}
+                  onRefundTransaction={handleRefundTransaction}
+                />
+              )}
+
+              {activeTab === 'inventory' && (
+                <InventoryView
+                  products={products}
+                  categories={categories}
+                  currencySymbol={storeConfig.currencySymbol}
+                  currentCashier={currentCashier}
+                  onAddProduct={handleAddProduct}
+                  onUpdateProduct={handleUpdateProduct}
+                  onDeleteProduct={handleDeleteProduct}
+                  onAddCategory={handleAddCategory}
+                  onUpdateCategory={handleUpdateCategory}
+                  onDeleteCategory={handleDeleteCategory}
+                  onNavigateHelp={() => setIsHelpOpen(true)}
+                />
+              )}
+
+              {activeTab === 'employees' && (
+                <EmployeesView
+                  employees={employees}
+                  onAddEmployee={handleAddEmployee}
+                  onUpdateEmployee={handleUpdateEmployee}
+                  onDeleteEmployee={handleDeleteEmployee}
+                />
+              )}
+
+              {activeTab === 'attendance' && (
+                <AttendanceView
+                  attendanceLogs={attendanceLogs}
+                  employees={employees}
+                  currentCashier={currentCashier}
+                  storeConfig={storeConfig}
+                  onCheckIn={handleCheckIn}
+                  onCheckOut={handleCheckOut}
+                  onToggleBreak={handleToggleBreak}
+                  onNavigate={setActiveTab}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsView storeConfig={storeConfig} onSaveConfig={handleSaveConfig} />
+              )}
+            </div>
+          </main>
+
+          {/* Modal Popups */}
+          {isPaymentModalOpen && (
+            <PaymentModal
               cart={cart}
               ticketNo={`#${ticketNumberCount}`}
               selectedCustomer={selectedCustomer}
@@ -784,162 +553,59 @@ export default function App() {
               taxRate={taxRate}
               currentCashier={currentCashier}
               currencySymbol={storeConfig.currencySymbol}
-              onAddToCart={handleAddToCart}
-              onUpdateQuantity={handleUpdateQuantity}
-              onRemoveFromCart={handleRemoveFromCart}
-              onSelectCustomer={setSelectedCustomer}
-              onApplyDiscount={setDiscountAmount}
-              onSaveOrder={handleSaveOrder}
-              onVoidOrder={handleVoidOrder}
-              onCheckout={() => setIsPaymentModalOpen(true)}
-              onOpenScanner={() => setIsScannerOpen(true)}
+              onClose={() => setIsPaymentModalOpen(false)}
+              onComplete={handleCompleteTransaction}
             />
           )}
 
-          {activeTab === 'inventory' && (
-            <InventoryView
-              products={products}
-              categories={categories}
-              currencySymbol={storeConfig.currencySymbol}
-              onAddProduct={handleAddProduct}
-              onUpdateStock={handleUpdateStock}
-              onDeleteProduct={handleDeleteProduct}
-              onAddCategory={handleAddCategory}
-              onUpdateCategory={handleUpdateCategory}
-              onDeleteCategory={handleDeleteCategory}
+          {activeReceipt && (
+            <ReceiptModal
+              transaction={activeReceipt}
+              storeConfig={storeConfig}
+              onClose={() => setActiveReceipt(null)}
             />
           )}
 
-          {activeTab === 'reports' && (
-            <ReportsView
-              currentCashier={currentCashier}
-              transactions={transactions}
-              cashierStats={cashierStats}
+          {selectedDetailTransaction && (
+            <TransactionDetailModal
+              transaction={selectedDetailTransaction}
               currencySymbol={storeConfig.currencySymbol}
-              onSelectTransaction={setSelectedDetailTransaction}
-              onExportReport={() => {
-                const csvContent =
-                  'data:text/csv;charset=utf-8,' +
-                  ['Ticket,Date,Time,Cashier,Payment,Status,Total'].join(',') +
-                  '\n' +
-                  transactions
-                    .map(
-                      (t) =>
-                        `${t.ticketNo},${t.date},${t.time},${t.cashierName},${t.paymentMethod},${t.status},${t.total}`
-                    )
-                    .join('\n');
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement('a');
-                link.setAttribute('href', encodedUri);
-                link.setAttribute('download', `grizo_pos_sales_report_${Date.now()}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+              onClose={() => setSelectedDetailTransaction(null)}
+              onRefund={(txId) => {
+                handleRefundTransaction(txId);
+                setSelectedDetailTransaction(null);
               }}
             />
           )}
 
-          {activeTab === 'attendance' && (
-            <AttendanceView
-              currentCashier={currentCashier}
-              employees={employees}
-              attendanceLogs={attendanceLogs}
-              storeConfig={storeConfig}
-              onNavigate={setActiveTab}
-              onCheckIn={handleCheckIn}
-              onCheckOut={handleCheckOut}
-              onToggleBreak={handleToggleBreak}
+          {isScannerOpen && (
+            <ScannerModal
+              products={products}
+              onScanProduct={handleAddToCart}
+              onClose={() => setIsScannerOpen(false)}
             />
           )}
 
-          {activeTab === 'employees' && (
-            <EmployeesView
-              employees={employees}
-              currentCashier={currentCashier}
-              currencySymbol={storeConfig.currencySymbol}
-              onSelectCashier={setCurrentCashier}
-              onAddEmployee={(emp) => setEmployees((prev) => [emp, ...prev])}
+          {isNotificationsOpen && (
+            <NotificationsModal
+              products={products}
+              notifications={notifications}
+              onClose={() => setIsNotificationsOpen(false)}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onClearAll={handleClearAllNotifications}
+              onNavigate={(tab) => {
+                setActiveTab(tab);
+                setIsNotificationsOpen(false);
+              }}
             />
           )}
 
-          {activeTab === 'settings' && (
-            <SettingsView
-              storeConfig={storeConfig}
-              onSaveConfig={handleSaveConfig}
-              onResetDemoData={handleResetDemoData}
-            />
+          {isHelpOpen && (
+            <HelpModal currentCashier={currentCashier} onClose={() => setIsHelpOpen(false)} />
           )}
-        </div>
-      </main>
-
-      {/* Modals & Overlays */}
-      {isPaymentModalOpen && (
-        <PaymentModal
-          cart={cart}
-          subtotal={subtotal}
-          tax={finalTax}
-          discount={discountAmount}
-          total={grandTotal}
-          ticketNo={`#${ticketNumberCount}`}
-          cashierName={currentCashier.name}
-          selectedCustomer={selectedCustomer}
-          currencySymbol={storeConfig.currencySymbol}
-          onClose={() => setIsPaymentModalOpen(false)}
-          onCompleteTransaction={handleCompleteTransaction}
-        />
-      )}
-
-      {activeReceipt && (
-        <ReceiptModal
-          transaction={activeReceipt}
-          storeConfig={storeConfig}
-          onClose={() => setActiveReceipt(null)}
-          onNewSale={() => setActiveTab('sales')}
-        />
-      )}
-
-      {selectedDetailTransaction && (
-        <TransactionDetailModal
-          transaction={selectedDetailTransaction}
-          currencySymbol={storeConfig.currencySymbol}
-          onClose={() => setSelectedDetailTransaction(null)}
-          onRefund={handleRefundTransaction}
-          onPrintReceipt={(tx) => {
-            setSelectedDetailTransaction(null);
-            setActiveReceipt(tx);
-          }}
-        />
-      )}
-
-      {isScannerOpen && (
-        <ScannerModal
-          products={products}
-          onScanProduct={handleAddToCart}
-          onClose={() => setIsScannerOpen(false)}
-        />
-      )}
-
-      {isNotificationsOpen && (
-        <NotificationsModal
-          products={products}
-          notifications={notifications}
-          onClose={() => setIsNotificationsOpen(false)}
-          onMarkAllAsRead={handleMarkAllNotificationsAsRead}
-          onMarkAsRead={handleMarkNotificationAsRead}
-          onClearAll={handleClearAllNotifications}
-          onNavigate={(tab) => {
-            setActiveTab(tab);
-            setIsNotificationsOpen(false);
-          }}
-        />
-      )}
-
-      {isHelpOpen && (
-        <HelpModal currentCashier={currentCashier} onClose={() => setIsHelpOpen(false)} />
-      )}
         </div>
       )}
     </>
   );
 }
-
