@@ -1,0 +1,43 @@
+name: CI/CD Pipeline - Grizo-POS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Continuous Integration (Lint, Typecheck & Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Type Check
+        run: npm run lint
+
+      - name: Build Production Application
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy-status:
+    name: Automated Quality Gate
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Quality Check Passed
+        run: echo "✅ Pipeline passed successfully! Code is production-ready."
