@@ -418,8 +418,16 @@ export default function App() {
   };
 
   const handleDeleteEmployee = (empId: string) => {
-    if (confirm('Are you sure you want to delete this employee?')) {
+    const isSelfDelete = currentCashier.id === empId;
+    const confirmMsg = isSelfDelete
+      ? 'Apakah Anda yakin ingin menghapus akun Anda sendiri? Anda akan otomatis dikeluarkan ke halaman login.'
+      : 'Apakah Anda yakin ingin menghapus karyawan ini?';
+
+    if (confirm(confirmMsg)) {
       setEmployees((prev) => prev.filter((e) => e.id !== empId));
+      if (isSelfDelete) {
+        handleLogout();
+      }
     }
   };
 
