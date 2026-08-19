@@ -400,10 +400,11 @@ export default function App() {
 
   // Employee Handlers
   const handleAddEmployee = (newEmp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday' | 'status'>) => {
+    const isManagementRole = newEmp.role === 'Admin' || newEmp.role === 'Store Manager';
     const created: Employee = {
       ...newEmp,
       id: `emp-${Date.now()}`,
-      status: 'Offline',
+      status: isManagementRole ? 'Active' : 'Offline',
       totalSalesToday: 0,
       txnsToday: 0
     };
