@@ -555,7 +555,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
             </div>
 
             <div className="p-3 bg-[#F0F7FF] rounded-xl border border-[#0f4c81]/20 text-[12px] text-[#0f4c81]">
-              💡 <strong>Info Otomatisasi:</strong> QR Code ID karyawan akan otomatis dibuat setelah pendaftaran untuk cetak kartu dan absensi terminal.
+              💡 <strong>Info Otomatisasi:</strong> Karyawan baru role Kasir akan berstatus <em>Offline</em> (wajib Check-In shift), sedangkan Admin/Store Manager langsung berstatus <em>Active</em>.
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-[#c2c7d1]">
