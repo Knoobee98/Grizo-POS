@@ -28,8 +28,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span className="material-symbols-outlined text-[24px]">menu</span>
         </button>
         <div className="hidden sm:flex items-baseline gap-2">
-          <h1 className="text-[22px] font-headline-md font-bold text-[#00355f]">
-            Grizo POS
+          <h1 className="text-[22px] font-headline-md font-bold text-[#00355f] hidden sm:block">
+            Grizo
           </h1>
           <span className="font-label-sm text-[11px] text-[#727780] font-semibold">
             powered by <span className="text-[#6366F1] font-bold">Grizolabs</span>

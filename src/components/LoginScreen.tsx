@@ -72,8 +72,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <div className="inline-flex items-center justify-center w-14 h-14 bg-white/10 rounded-2xl border border-white/20 mb-3 shadow-inner">
             <span className="material-symbols-outlined text-[32px] text-white">point_of_sale</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-headline-md font-extrabold tracking-tight">
-            Grizo POS
+          <h1 className="font-headline-lg text-[28px] font-bold text-white tracking-wide">
+            Grizo
           </h1>
           <p className="text-xs sm:text-sm text-blue-100 font-label-sm font-semibold mt-1">
             Sistem Kasir & Operasional Toko
