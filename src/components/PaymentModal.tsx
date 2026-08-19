@@ -1,52 +1,68 @@
 import React, { useState } from 'react';
-import { CartItem, Customer, Transaction } from '../types';
+import { CartItem, Customer, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/format';
 
 interface PaymentModalProps {
   cart: CartItem[];
-  subtotal: number;
-  tax: number;
-  discount: number;
-  total: number;
+  subtotal?: number;
+  tax?: number;
+  discount?: number;
+  total?: number;
   ticketNo: string;
-  cashierName: string;
+  cashierName?: string;
+  currentCashier?: Employee;
   selectedCustomer: Customer | null;
+  discountAmount?: number;
+  taxRate?: number;
   currencySymbol?: string;
   onClose: () => void;
-  onCompleteTransaction: (newTx: Transaction) => void;
+  onComplete?: (newTx: Transaction) => void;
+  onCompleteTransaction?: (newTx: Transaction) => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
   cart,
-  subtotal,
-  tax,
-  discount,
-  total,
+  subtotal: propSubtotal,
+  tax: propTax,
+  discount: propDiscount,
+  total: propTotal,
   ticketNo,
-  cashierName,
+  cashierName: propCashierName,
+  currentCashier,
   selectedCustomer,
+  discountAmount = 0,
+  taxRate = 0.085,
   currencySymbol = 'Rp',
   onClose,
+  onComplete,
   onCompleteTransaction
 }) => {
+  // Compute fallback values if subtotal/tax/total were not passed directly from parent
+  const computedSubtotal = propSubtotal ?? cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const effectiveDiscount = propDiscount ?? discountAmount;
+  const computedCalculatedTax = Math.round((computedSubtotal - effectiveDiscount) * taxRate * 100) / 100;
+  const computedTax = propTax ?? (computedCalculatedTax < 0 ? 0 : computedCalculatedTax);
+  const computedTotal = propTotal ?? Math.max(0, computedSubtotal - effectiveDiscount + computedTax);
+  const cashierName = propCashierName || currentCashier?.name || 'Kasir Grizo';
+
   const [paymentMethod, setPaymentMethod] = useState<'Credit Card' | 'Cash' | 'Mobile Pay' | 'Gift Card'>('Credit Card');
-  const [amountTendered, setAmountTendered] = useState<string>(Math.ceil(total).toString());
+  const [amountTendered, setAmountTendered] = useState<string>(Math.ceil(computedTotal).toString());
   const [isProcessing, setIsProcessing] = useState(false);
 
   const tenderedNumber = parseFloat(amountTendered) || 0;
-  const changeDue = Math.max(0, tenderedNumber - total);
+  const changeDue = Math.max(0, tenderedNumber - computedTotal);
 
   // Quick cash preset amounts
   const getQuickCashOptions = (): number[] => {
     const isIDR = !currencySymbol || currencySymbol === 'Rp' || currencySymbol === 'IDR';
-    if (isIDR || total >= 1000) {
-      const p1 = total;
-      const p2 = Math.ceil(total / 20000) * 20000 || total + 20000;
-      const p3 = Math.ceil(total / 50000) * 50000 || total + 50000;
-      const p4 = Math.ceil(total / 100000) * 100000 || total + 100000;
-      return Array.from(new Set([p1, p2, p3, p4].filter((n) => n >= total)));
+    if (isIDR || computedTotal >= 1000) {
+      const p1 = computedTotal;
+      const p2 = Math.ceil(computedTotal / 20000) * 20000 || computedTotal + 20000;
+      const p3 = Math.ceil(computedTotal / 50000) * 50000 || computedTotal + 50000;
+      const p4 = Math.ceil(computedTotal / 100000) * 100000 || computedTotal + 100000;
+      return Array.from(new Set([p1, p2, p3, p4].filter((n) => n >= computedTotal)));
     } else {
-      return Array.from(new Set([total, 20, 50, 100].filter((n) => n >= total)));
+      return Array.from(new Set([computedTotal, 20, 50, 100].filter((n) => n >= computedTotal)));
     }
   };
 
@@ -77,15 +93,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           unitPrice: item.product.price,
           subtotal: item.product.price * item.quantity
         })),
-        subtotal,
-        tax,
-        discount,
-        total,
-        amountTendered: paymentMethod === 'Cash' ? tenderedNumber : total,
+        subtotal: computedSubtotal,
+        tax: computedTax,
+        discount: effectiveDiscount,
+        total: computedTotal,
+        amountTendered: paymentMethod === 'Cash' ? tenderedNumber : computedTotal,
         changeDue: paymentMethod === 'Cash' ? changeDue : 0
       };
 
-      onCompleteTransaction(newTx);
+      if (onComplete) {
+        onComplete(newTx);
+      } else if (onCompleteTransaction) {
+        onCompleteTransaction(newTx);
+      }
       setIsProcessing(false);
     }, 600);
   };
@@ -118,7 +138,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               Total Tagihan Pembayaran
             </span>
             <span className="font-label-data text-[22px] sm:text-[28px] font-extrabold tracking-tight block mt-0.5">
-              {formatCurrency(total, currencySymbol)}
+              {formatCurrency(computedTotal, currencySymbol)}
             </span>
           </div>
 
@@ -183,7 +203,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       onClick={() => setAmountTendered(amt.toString())}
                       className="px-2.5 py-1 bg-white border border-[#c2c7d1] rounded-lg font-label-data text-[11px] sm:text-[12px] font-bold text-[#1a1c1e] hover:bg-[#eeeef0] transition-colors cursor-pointer"
                     >
-                      {amt === total ? 'Uang Pas' : formatCurrency(amt, currencySymbol)}
+                      {amt === computedTotal ? 'Uang Pas' : formatCurrency(amt, currencySymbol)}
                     </button>
                   ))}
                 </div>
@@ -244,7 +264,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           <button
             type="button"
             onClick={handleProcessPayment}
-            disabled={isProcessing || (paymentMethod === 'Cash' && tenderedNumber < total)}
+            disabled={isProcessing || (paymentMethod === 'Cash' && tenderedNumber < computedTotal)}
             className="flex-2 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-label-sm text-[13px] sm:text-[14.5px] font-bold flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-40 transition-colors cursor-pointer"
           >
             {isProcessing ? (
@@ -252,7 +272,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             ) : (
               <>
                 <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                <span>Bayar {formatCurrency(total, currencySymbol)}</span>
+                <span>Bayar {formatCurrency(computedTotal, currencySymbol)}</span>
               </>
             )}
           </button>
