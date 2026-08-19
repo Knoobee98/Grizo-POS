@@ -96,14 +96,30 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
             </div>
             {transaction.discount > 0 && (
               <div className="flex justify-between text-[#10B981]">
-                <span>Discount:</span>
+                <span>Diskon:</span>
                 <span className="font-bold">-{formatCurrency(transaction.discount, currencySymbol)}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span>Tax (8.5%):</span>
+              <span>Pajak (8.5%):</span>
               <span className="font-bold">{formatCurrency(transaction.tax, currencySymbol)}</span>
             </div>
+            <div className="flex justify-between text-[16px] font-extrabold text-[#1a1c1e] pt-2 border-t border-[#c2c7d1]">
+              <span>TOTAL TAGIHAN:</span>
+              <span className="text-[#00355f]">{formatCurrency(transaction.total, currencySymbol)}</span>
+            </div>
+            {transaction.amountTendered !== undefined && Number(transaction.amountTendered) > 0 && (
+              <div className="flex justify-between text-[12px] pt-1 text-[#727780]">
+                <span>Diterima / Tunai:</span>
+                <span className="font-bold">{formatCurrency(transaction.amountTendered, currencySymbol)}</span>
+              </div>
+            )}
+            {transaction.changeDue !== undefined && Number(transaction.changeDue) >= 0 && (
+              <div className="flex justify-between text-[12px] text-[#10B981] font-bold">
+                <span>Kembalian:</span>
+                <span>{formatCurrency(transaction.changeDue, currencySymbol)}</span>
+              </div>
+            )}
           </div>
         </div>
 

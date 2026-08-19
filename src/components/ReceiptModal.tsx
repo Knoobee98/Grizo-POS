@@ -114,13 +114,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>{formatCurrency(transaction.total, curr)}</span>
             </div>
 
-            {transaction.amountTendered !== undefined && transaction.amountTendered > 0 && (
+            {transaction.amountTendered !== undefined && Number(transaction.amountTendered) > 0 && (
               <div className="flex justify-between text-[12px] pt-1 text-[#727780]">
-                <span>Diterima:</span>
-                <span>{formatCurrency(transaction.amountTendered, curr)}</span>
+                <span>Uang Diterima:</span>
+                <span className="font-bold">{formatCurrency(transaction.amountTendered, curr)}</span>
               </div>
             )}
-            {transaction.changeDue !== undefined && transaction.changeDue >= 0 && (
+            {transaction.changeDue !== undefined && Number(transaction.changeDue) >= 0 && (
               <div className="flex justify-between text-[12px] text-[#10B981] font-bold">
                 <span>Kembalian:</span>
                 <span>{formatCurrency(transaction.changeDue, curr)}</span>
