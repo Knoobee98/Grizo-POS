@@ -131,7 +131,7 @@ export const DEFAULT_STORE_CONFIG: StoreConfig = {
   phone: '+62 812-3456-7890',
   taxRate: 0.085,
   currencySymbol: 'Rp',
-  receiptFooter: 'Terima kasih telah berbelanja di Grizo POS! Barang yang sudah dibeli dapat ditukar max 3 hari.',
+  receiptFooter: 'Terima kasih telah berbelanja di Grizo! Barang yang sudah dibeli dapat ditukar max 3 hari.',
   autoPrintReceipt: true,
   paperSize: '80mm',
   enableSound: true,

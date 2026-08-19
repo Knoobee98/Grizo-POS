@@ -30,7 +30,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
   const [pin, setPin] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
 
-  // Handle Photo Picker & Compression
+  // Handle Photo Upload & Canvas WebP Compression
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -80,7 +80,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
     onAddEmployee({
       name,
       role,
-      email: email || `${cleanCashierKey}@grizopos.com`,
+      email: email || `${cleanCashierKey}@grizo.com`,
       phone: phone || '+62 812-0000-0000',
       pin: pin || '1234',
       cashierKey: cleanCashierKey,
@@ -97,6 +97,194 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
     setRole('Cashier');
   };
 
+  const handlePrintPDFCard = (emp: Employee) => {
+    const qrText = emp.qrCode || `GRIZO-EMP-${emp.id}-${emp.cashierKey}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrText)}`;
+    const avatarHtml = emp.avatarUrl
+      ? `<img src="${emp.avatarUrl}" class="avatar-img" />`
+      : `<div class="avatar-placeholder">${emp.name.charAt(0)}</div>`;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=700');
+    if (!printWindow) {
+      alert('Gagal membuka jendela cetak. Mohon izinkan popup browser.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>KARTU_KARYAWAN_${emp.name.replace(/\s+/g, '_')}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            body {
+              font-family: 'Segoe UI', Arial, sans-serif;
+              background-color: #f3f4f6;
+              margin: 0;
+              padding: 40px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              box-sizing: border-box;
+            }
+            .card-container {
+              width: 85.6mm;
+              height: 125mm;
+              background: linear-gradient(135deg, #0f4c81 0%, #002244 100%);
+              border-radius: 16px;
+              box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+              color: white;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              padding: 20px;
+              box-sizing: border-box;
+              position: relative;
+              overflow: hidden;
+            }
+            .card-header {
+              text-align: center;
+              margin-bottom: 12px;
+            }
+            .card-header h1 {
+              font-size: 22px;
+              font-weight: 800;
+              margin: 0;
+              letter-spacing: 2px;
+              color: #ffffff;
+            }
+            .card-header p {
+              font-size: 9px;
+              color: #93c5fd;
+              margin: 2px 0 0 0;
+              letter-spacing: 1px;
+              text-transform: uppercase;
+            }
+            .avatar-box {
+              width: 90px;
+              height: 90px;
+              border-radius: 50%;
+              border: 3px solid #60a5fa;
+              overflow: hidden;
+              margin-bottom: 10px;
+              background-color: rgba(255,255,255,0.1);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            }
+            .avatar-img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+            .avatar-placeholder {
+              font-size: 36px;
+              font-weight: bold;
+              color: #ffffff;
+            }
+            .emp-name {
+              font-size: 16px;
+              font-weight: 700;
+              margin: 0;
+              text-align: center;
+              color: #ffffff;
+            }
+            .emp-role {
+              font-size: 10px;
+              font-weight: 700;
+              background-color: rgba(255,255,255,0.2);
+              color: #e0f2fe;
+              padding: 3px 12px;
+              border-radius: 20px;
+              margin: 4px 0 10px 0;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .qr-box {
+              background: white;
+              padding: 8px;
+              border-radius: 12px;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+              margin-bottom: 8px;
+            }
+            .qr-box img {
+              width: 100px;
+              height: 100px;
+              display: block;
+            }
+            .emp-details {
+              font-size: 8.5px;
+              color: #dbeafe;
+              text-align: center;
+              line-height: 1.3;
+            }
+            .emp-id-code {
+              font-family: monospace;
+              font-size: 8px;
+              color: #93c5fd;
+              margin-top: 4px;
+            }
+            .print-btn {
+              margin-top: 20px;
+              padding: 10px 24px;
+              background-color: #0f4c81;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: bold;
+              font-size: 14px;
+              cursor: pointer;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            @media print {
+              body {
+                background: none;
+                padding: 0;
+              }
+              .print-btn {
+                display: none;
+              }
+              .card-container {
+                box-shadow: none;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card-container">
+            <div class="card-header">
+              <h1>GRIZO</h1>
+              <p>OFFICIAL STAFF ID CARD</p>
+            </div>
+            <div class="avatar-box">
+              ${avatarHtml}
+            </div>
+            <h2 class="emp-name">${emp.name}</h2>
+            <div class="emp-role">${emp.role}</div>
+            <div class="qr-box">
+              <img src="${qrApiUrl}" alt="QR Code" />
+            </div>
+            <div class="emp-details">
+              <div>${emp.email}</div>
+              <div>${emp.phone}</div>
+              <div class="emp-id-code">ID: ${emp.id}</div>
+            </div>
+          </div>
+          <button class="print-btn" onclick="window.print()">Simpan / Cetak Kartu PDF</button>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#f9f9fc]">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -107,7 +295,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
               Manajemen Karyawan & Hak Akses
             </h1>
             <p className="font-body-md text-[15px] text-[#42474f]">
-              Kelola profil staff, foto, QR Code akses, PIN terminal, dan kinerja penjualan toko
+              Kelola profil staff, foto, QR Code akses, PIN terminal, dan cetak Kartu ID Karyawan PDF
             </p>
           </div>
 
@@ -124,10 +312,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {employees.map((emp) => {
             const isActiveUser = currentCashier.id === emp.id;
-            const empQrText = emp.qrCode || `GRIZO-EMP-${emp.id}-${emp.cashierKey}`;
-            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-              empQrText
-            )}`;
 
             return (
               <div
@@ -207,7 +391,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                   </div>
                 </div>
 
-                {/* Bottom Action Card & QR Code Trigger */}
+                {/* Bottom Action Card, PDF Print & QR Code Trigger */}
                 <div className="pt-3 mt-3 border-t border-[#c2c7d1] flex items-center gap-2">
                   <button
                     onClick={() => setSelectedQRModalEmp(emp)}
@@ -218,20 +402,25 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                   </button>
 
                   <button
+                    onClick={() => handlePrintPDFCard(emp)}
+                    className="px-3 py-2 bg-[#F0F7FF] hover:bg-[#e0f0ff] border border-[#0f4c81]/40 text-[#0f4c81] font-label-sm text-[12px] font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+                    title="Cetak Kartu Karyawan PDF"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                    <span>Cetak PDF</span>
+                  </button>
+
+                  <button
                     onClick={() => {
                       if (confirm(`Hapus data karyawan "${emp.name}"?`)) {
                         onDeleteEmployee(emp.id);
                       }
                     }}
-                    className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0"
+                    className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0 ml-auto"
                     title="Hapus Karyawan"
                   >
                     <span className="material-symbols-outlined text-[20px]">delete</span>
                   </button>
-
-                  <div className="flex-1 text-right text-[11px] font-label-data text-[#727780] truncate">
-                    ID: {emp.id}
-                  </div>
                 </div>
               </div>
             );
@@ -328,7 +517,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                 <input
                   type="email"
                   required
-                  placeholder="david@grizopos.com"
+                  placeholder="david@grizo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2 border border-[#c2c7d1] rounded-xl outline-none focus:border-[#0f4c81] font-body-md text-[14px]"
@@ -366,7 +555,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
             </div>
 
             <div className="p-3 bg-[#F0F7FF] rounded-xl border border-[#0f4c81]/20 text-[12px] text-[#0f4c81]">
-              💡 <strong>Info Otomatisasi:</strong> QR Code ID karyawan akan otomatis dibuat setelah pendaftaran untuk kemudahan absensi dan autentikasi terminal.
+              💡 <strong>Info Otomatisasi:</strong> QR Code ID karyawan akan otomatis dibuat setelah pendaftaran untuk cetak kartu dan absensi terminal.
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-[#c2c7d1]">
@@ -388,7 +577,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
         </div>
       )}
 
-      {/* Modal Card Detail QR Code Karyawan */}
+      {/* Modal Card Detail QR Code & Cetak PDF Karyawan */}
       {selectedQRModalEmp && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-[#c2c7d1] shadow-xl text-center space-y-4">
@@ -441,12 +630,21 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => setSelectedQRModalEmp(null)}
-              className="w-full py-2.5 bg-[#0f4c81] text-white font-label-sm text-[13px] font-bold rounded-xl cursor-pointer"
-            >
-              Tutup Kartu
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePrintPDFCard(selectedQRModalEmp)}
+                className="flex-1 py-2.5 bg-[#F0F7FF] border border-[#0f4c81]/30 text-[#0f4c81] font-label-sm text-[13px] font-bold rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                <span>Cetak PDF</span>
+              </button>
+              <button
+                onClick={() => setSelectedQRModalEmp(null)}
+                className="flex-1 py-2.5 bg-[#0f4c81] text-white font-label-sm text-[13px] font-bold rounded-xl cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
