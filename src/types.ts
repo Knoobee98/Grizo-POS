@@ -80,7 +80,6 @@ export interface Employee {
   role: 'Cashier' | 'Admin' | 'Store Manager';
   email: string;
   phone: string;
-  status: 'Active' | 'On Break' | 'Offline';
   totalSalesToday: number;
   txnsToday: number;
   avatarUrl?: string;

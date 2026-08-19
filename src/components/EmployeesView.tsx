@@ -6,7 +6,7 @@ interface EmployeesViewProps {
   employees: Employee[];
   currentCashier: Employee;
   currencySymbol?: string;
-  onAddEmployee: (emp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday' | 'status'>) => void;
+  onAddEmployee: (emp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday'>) => void;
   onUpdateEmployee: (emp: Employee) => void;
   onDeleteEmployee: (empId: string) => void;
 }
@@ -321,7 +321,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                 }`}
               >
                 <div>
-                  {/* Top Avatar & Status Row */}
+                  {/* Top Avatar & Role Row */}
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       {emp.avatarUrl ? (
@@ -344,18 +344,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                         </span>
                       </div>
                     </div>
-
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold font-label-data ${
-                        emp.status === 'Active'
-                          ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30'
-                          : emp.status === 'On Break'
-                          ? 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/30'
-                          : 'bg-[#727780]/10 text-[#727780] border border-[#727780]/30'
-                      }`}
-                    >
-                      {emp.status}
-                    </span>
                   </div>
 
                   {/* Profile Details List */}
@@ -555,7 +543,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
             </div>
 
             <div className="p-3 bg-[#F0F7FF] rounded-xl border border-[#0f4c81]/20 text-[12px] text-[#0f4c81]">
-              💡 <strong>Info Otomatisasi:</strong> Karyawan baru role Kasir akan berstatus <em>Offline</em> (wajib Check-In shift), sedangkan Admin/Store Manager langsung berstatus <em>Active</em>.
+              💡 <strong>Info Otomatisasi:</strong> QR Code ID karyawan akan otomatis dibuat setelah pendaftaran untuk cetak kartu dan akses terminal.
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-[#c2c7d1]">

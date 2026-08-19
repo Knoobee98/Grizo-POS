@@ -241,31 +241,17 @@ export default function App() {
     }
   }, [currentCashier, activeTab]);
 
-  // Attendance Handlers wrapping hook + employee status updates
+  // Attendance Handlers wrapping hook
   const handleCheckIn = async (employeeId: string, notes?: string) => {
     await performCheckIn(employeeId, notes);
-    setEmployees((prev) =>
-      prev.map((e) => (e.id === employeeId ? { ...e, status: 'Active' } : e))
-    );
   };
 
   const handleCheckOut = async (employeeId: string) => {
     await performCheckOut(employeeId);
-    setEmployees((prev) =>
-      prev.map((e) => (e.id === employeeId ? { ...e, status: 'Offline' } : e))
-    );
   };
 
   const handleToggleBreak = async (employeeId: string) => {
     await performToggleBreak(employeeId);
-    setEmployees((prev) =>
-      prev.map((e) => {
-        if (e.id === employeeId) {
-          return { ...e, status: e.status === 'On Break' ? 'Active' : 'On Break' };
-        }
-        return e;
-      })
-    );
   };
 
   // Checkout Payment Complete Handler
@@ -399,12 +385,10 @@ export default function App() {
   };
 
   // Employee Handlers
-  const handleAddEmployee = (newEmp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday' | 'status'>) => {
-    const isManagementRole = newEmp.role === 'Admin' || newEmp.role === 'Store Manager';
+  const handleAddEmployee = (newEmp: Omit<Employee, 'id' | 'totalSalesToday' | 'txnsToday'>) => {
     const created: Employee = {
       ...newEmp,
       id: `emp-${Date.now()}`,
-      status: isManagementRole ? 'Active' : 'Offline',
       totalSalesToday: 0,
       txnsToday: 0
     };
