@@ -518,6 +518,8 @@ export default function App() {
               {activeTab === 'employees' && (
                 <EmployeesView
                   employees={employees}
+                  currentCashier={currentCashier}
+                  currencySymbol={storeConfig.currencySymbol}
                   onAddEmployee={handleAddEmployee}
                   onUpdateEmployee={handleUpdateEmployee}
                   onDeleteEmployee={handleDeleteEmployee}

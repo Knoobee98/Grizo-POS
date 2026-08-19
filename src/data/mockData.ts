@@ -319,7 +319,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     totalSalesToday: 15450000,
     txnsToday: 142,
     cashierKey: 'kasir1',
-    pin: '1111'
+    pin: '1111',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
+    qrCode: 'GRIZO-EMP-emp-1-kasir1'
   },
   {
     id: 'emp-2',
@@ -331,7 +333,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     totalSalesToday: 12100000,
     txnsToday: 110,
     cashierKey: 'kasir2',
-    pin: '2222'
+    pin: '2222',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    qrCode: 'GRIZO-EMP-emp-2-kasir2'
   },
   {
     id: 'emp-3',
@@ -343,7 +347,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     totalSalesToday: 27550000,
     txnsToday: 252,
     cashierKey: 'admin',
-    pin: '9999'
+    pin: '9999',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    qrCode: 'GRIZO-EMP-emp-3-admin'
   },
   {
     id: 'emp-4',
@@ -355,7 +361,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     totalSalesToday: 8500000,
     txnsToday: 45,
     cashierKey: 'manager',
-    pin: '8888'
+    pin: '8888',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    qrCode: 'GRIZO-EMP-emp-4-manager'
   }
 ];
 
