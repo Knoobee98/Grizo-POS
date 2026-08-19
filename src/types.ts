@@ -84,7 +84,8 @@ export interface Employee {
   totalSalesToday: number;
   txnsToday: number;
   avatarUrl?: string;
-  cashierKey: 'kasir1' | 'kasir2' | 'admin' | 'manager';
+  qrCode?: string;
+  cashierKey: string;
   pin?: string;
 }
 
